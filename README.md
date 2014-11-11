@@ -25,7 +25,8 @@ do some real work of finding legitimate and directed attacks to your servers.
 @daily          root    /usr/local/bin/blacklists.sh
 ~~~
 - setup logging
-_/etc/logrotate.d/blacklist 
+
+_/etc/logrotate.d/blacklist_
 ~~~
 /var/log/blacklists.log
 {
