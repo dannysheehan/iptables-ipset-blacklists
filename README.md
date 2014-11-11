@@ -53,7 +53,6 @@ _/etc/rsyslog.d/30-blacklist.conf_
 ## Features
 
 - loads known authorative blacklists and allows you add/configure others easily 
-if you have basic scripting knownledge.
 - allows you to create your own blacklist of IPs and net ranges.
 - allows you to create a whitelist and notifies you if one of your whitelisted IPs
 is in a blacklist. Don't block legitimate traffic.
