@@ -2,14 +2,26 @@
 #---------------------------------------------------------------------------
 # @(#)$Id$
 #title          :blacklists.sh
-#description    :Script that uses iptables ipset to block ip's in known blacklists.
+#description    :Uses iptables ipset to block ip's in known blacklists.
 #author         :Danny W Sheehan
 #date           :July 2014
 #website        :www.ftmon.org  www.setuptips.com
 #---------------------------------------------------------------------------
+
+# Retrieve new blacklists when they are older then BL_AGE
 BL_AGE="23 hours ago"
+
+# We we keep all the blacklists.
 BL_DIR="/var/lib/blacklists"
 
+# Logging is enabled for the following ports, so we can check (audit)
+# if are droping legitimate traffic.
+TCP_PORTS="53,80,443"
+UDP_PORTS="53"
+
+# If PSAD is installed then block Danger Level = $DL and above attackers
+# each day the blacklists are reloaded.
+DL=3
 
 # goodinbadnets 
 goodinbadnets () {
@@ -32,13 +44,13 @@ blacklistit () {
    ipset add bad_nets_n $IP -exist
    badip=`goodinbadnets`
    if [[ -n "$badip" ]] ; then
-     echo "*** Your IP $badip has been blacklisted in $LISTNAME" >&2
+     echo "*** Your whitelist IP $badip has been blacklisted in $LISTNAME" >&2
      ipset del bad_nets_n $IP
    fi
         
  else
    if ipset test good_ips $IP 2> /dev/null; then
-     echo "*** Your IP $IP has been blacklisted in $LISTNAME" >&2
+     echo "*** Your whitelist IP $IP has been blacklisted in $LISTNAME" >&2
    else 
      ipset add bad_ips_n $IP -exist
    fi
@@ -60,7 +72,7 @@ loadblacklist () {
   
   if [[ -f $BL_FILE ]]; then
     echo "-- loading $BL_NAME from $BL_FILE" >&2
-    # strip comments - mac address and ipv6 not support so strip :
+    # strip comments - mac address and ipv6 not supported yet so strip :
     for ip in `grep -Ev "^#|^ *$|:" $BL_FILE | sed -e "s/[^0-9\.\/]//g" | grep -E "^[0-9]"`; do
 
       blacklistit $ip $BL_NAME
@@ -89,7 +101,7 @@ ipset create bad_nets_n hash:net hashsize 4096 maxelem 262144 2> /dev/null
 ipset flush bad_nets_n
 
 #
-# Setup the production ipsets if they don't yet exist.
+# Setup the active ipsets if they don't yet exist.
 #
 if ! ipset list bad_ips > /dev/null 2>&1
 then
@@ -130,16 +142,17 @@ if ! iptables -L ftmon-blacklists -n > /dev/null 2>&1; then
 
   # keep a record of our business traffic ports.
   # so we can check if we blocked legitimate traffic if need be.
-  iptables -A ftmon-blacklists -p tcp -m multiport --dports 80,443 \
+  # DNS and http/https are most typical legit ports
+  iptables -A ftmon-blacklists -p tcp -m multiport --dports $TCP_PORTS \
          -m limit --limit 5/min \
          -j LOG --log-prefix "[BL DROP] "
-  iptables -A ftmon-blacklists -p udp -m multiport --dport 53 \
+  iptables -A ftmon-blacklists -p udp -m multiport --dport $UDP_PORTS \
          -m limit --limit 5/min \
          -j LOG --log-prefix "[BL DROP] "
   iptables -A ftmon-blacklists -m state --state NEW \
-       -p tcp -m multiport --dports 80,443 -j REJECT 
+       -p tcp -m multiport --dports $TCP_PORTS -j REJECT 
   iptables -A ftmon-blacklists -m state --state NEW \
-       -p udp -m multiport --dports 53 -j REJECT 
+       -p udp -m multiport --dports $UDP_PORTS -j REJECT 
   iptables -A ftmon-blacklists -m state --state NEW -j DROP 
 fi
 
@@ -156,20 +169,37 @@ ipset flush good_ips
 
 # load your good ip's
 WL_CUSTOM="$BL_DIR/whitelist.txt"
+count=0
 if [[ -f "$WL_CUSTOM" ]]; then
   for ip in `grep -Ev "^#|^ *$" $WL_CUSTOM | sed -e "s/#.*$//" -e "s/[^.0-9\/]//g"`; do
      ipset add good_ips $ip -exist
+     count=$((count+1))
   done
 fi
-echo "-- loaded `ipset list good_ips | egrep "^[1-9]"  | wc -l` entries from whitelist " >&2
+echo "-- loaded $count entries from $WL_CUSTOM" >&2
 
 # load your personal custom blacklists.
 BL_CUSTOM="$BL_DIR/blacklist.txt"
+count=0
 if [[ -f "$BL_CUSTOM" ]]; then
   for ip in `grep -Ev "^#|^ *$" $BL_CUSTOM | sed -e "s/#.*$//" -e "s/[^.0-9\/]//g"`; do
     blacklistit $ip $BLACKLIST
+    count=$((count+1))
   done
 fi
+echo "-- loaded `ipset list bad_ips_n | egrep "^[1-9]"  | wc -l` entries from blacklist " >&2
+echo "-- loaded $count entries from $BL_CUSTOM" >&2
+
+# If PSAD is installed then use some of it's good detection work
+# to stop attackers.
+count=0
+if [[ -f "/var/log/psad/top_attackers" ]];then
+ for ip in `awk '{print $2, $1}' /var/log/psad/top_attackers | grep "^[$DL-]" | awk '{print $2}'`; do
+    blacklistit $ip $BLACKLIST
+    count=$((count+1))
+  done
+fi
+echo "-- loaded $count entries from /var/log/psad/top_attackers " >&2
 
 #
 # Load Standard format blacklists
