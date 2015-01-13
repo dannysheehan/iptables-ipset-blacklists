@@ -10,6 +10,10 @@
 BL_AGE="23 hours ago"
 BL_DIR="/var/lib/blacklists"
 
+# Some hosting services such as RamNode will ban you for using > 90% of the cpu.
+# So we recommend installing cpulimit and limiting to 20% of cpu usage.
+## cpulimit -l 20 /usr/local/bin/blacklists.sh
+
 
 # goodinbadnets 
 goodinbadnets () {
@@ -59,10 +63,10 @@ loadblacklist () {
   fi
   
   if [[ -f $BL_FILE ]]; then
-    echo "-- loading $BL_NAME from $BL_FILE" >&2
     # strip comments - mac address and ipv6 not support so strip :
-    for ip in `grep -Ev "^#|^ *$|:" $BL_FILE | sed -e "s/[^0-9\.\/]//g" | grep -E "^[0-9]"`; do
-
+    awk '{print $1}' $BL_FILE | cut -d\; -f1 | cut -d\, -f1 | grep -Ev "^#|^ *$|:" | sed -e "s/[^0-9\.\/]//g" | grep -E "^[0-9]" > ${BL_FILE}.filtered
+    echo "-- loading $BL_NAME - `wc -l ${BL_FILE}.filtered` entries" >&2
+    for ip in `cat ${BL_FILE}.filtered`; do
       blacklistit $ip $BL_NAME
     done
   fi
@@ -196,6 +200,32 @@ loadblacklist \
   "openbl-org-base" \
   "http://www.openbl.org/lists/base.txt"
 
+# 
+loadblacklist \
+  "ci-army-malcious" \
+  "http://cinsscore.com/list/ci-badguys.txt"
+
+loadblacklist \
+  "autoshun-org" \
+  "http://www.autoshun.org/files/shunlist.csv"
+
+loadblacklist \
+  "bruteforceblocker" \
+  "http://danger.rulez.sk/projects/bruteforceblocker/blist.php" 
+
+loadblacklist \
+  "torexitnodes" \
+  "https://check.torproject.org/cgi-bin/TorBulkExitList.py?ip=1.1.1.1"
+
+#
+loadblacklist \
+  "spamhaus-org-lasso" \
+  "http://www.spamhaus.org/drop/drop.lasso"
+
+loadblacklist \
+  "dshield.org-top-10-2" \
+  "http://feeds.dshield.org/top10-2.txt"
+
 
 #
 # bot nets
@@ -220,27 +250,6 @@ loadblacklist \
 # special cases, custom formats
 #
 
-# Obtain List of badguys from dshield.org
-# https://isc.sans.edu/feeds_doc.html
-  BL_NAME="dshield.org-top-10-2"
-  BL_URL="http://feeds.dshield.org/top10-2.txt"
-
-  BL_FILE="$BL_DIR/$BL_NAME.txt"
-  if [[ ! -f "$BL_FILE" || \
-       $(date +%s -r $BL_FILE) -lt $(date +%s --date="$BL_AGE") ]]
-  then
-    echo "-- getting fresh $BL_NAME from $BL_URL" >&2
-    wget -q -t 2 --output-document=$BL_FILE $BL_URL
-  fi
-  
-  if [[ -f $BL_FILE ]]; then
-    echo "-- loading $BL_NAME from $BL_FILE" >&2
-    for ip in `grep -E "^[1-9]" $BL_FILE | cut -f1`; do
-      blacklistit $ip $BL_NAME
-    done
-  fi
-
-
 ## Obtain List of badguys from dshield.org
   BL_NAME="dshield.org-block"
   BL_URL="http://feeds.dshield.org/block.txt"
@@ -260,25 +269,6 @@ loadblacklist \
     done
   fi
 
-## Obtain List of badguys from spamhaus.org
-## http://www.spamhaus.org/faq/section/DROP%20FAQ
-  BL_NAME="spamhaus-org-lasso"
-  BL_URL="http://www.spamhaus.org/drop/drop.lasso"
-
-  BL_FILE="$BL_DIR/$BL_NAME.txt"
-  if [[ ! -f "$BL_FILE" || \
-       $(date +%s -r $BL_FILE) -lt $(date +%s --date="$BL_AGE") ]]
-  then
-    echo "-- getting fresh $BL_NAME from $BL_URL" >&2
-    wget -q -t 2 --output-document=$BL_FILE $BL_URL
-  fi
-  
-  if [[ -f $BL_FILE ]]; then
-    echo "-- loading $BL_NAME from $BL_FILE" >&2
-    for ip in `grep -E "^[1-9]" $BL_FILE | cut -d\; -f1`; do
-      blacklistit $ip $BL_NAME
-    done
-  fi
 
 
 # swap in the new sets.
