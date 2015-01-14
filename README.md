@@ -24,10 +24,12 @@ So we recommending using **cpulimit** to invoke blacklists.sh
     -  /var/lib/blacklists/{whitelist.txt,blacklist.txt}
 - run _sudo blacklists.sh_  
 - setup your _/etc/crontab_
+
     ~~~
     @reboot         root    /usr/local/bin/blacklists.sh
     @daily          root    /usr/local/bin/blacklists.sh
     ~~~
+
 - NOTE: If your hosting provider is Ramnode your terms of service prevent you from using all
 your available CPU load.  So use cpulimit to restrict the CPU usage to 20%.
     ~~~
