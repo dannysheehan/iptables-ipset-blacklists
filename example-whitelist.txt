@@ -1,0 +1,79 @@
+#
+# Public DNS servers from your /etc/resolv.conf
+8.8.8.8           #google Public dns
+8.8.4.4         
+209.244.0.3       #level3 public dns
+209.244.0.4     
+208.67.222.222    #opendns Public dns
+208.67.220.220  
+#
+# Primary/Secondary DNS providers that manage your domains.
+#
+173.244.206.26    #a.transfer.buddyns.com
+88.198.106.11     #b.transfer.buddyns.com, c.ns.buddyns.com. Europe, Germany
+209.177.145.51    #d.ns.buddyns.com  USA, New York
+213.183.56.98     #e.ns.buddyns.com   Moscow, Russia
+199.167.17.21     #g.ns.buddyns.com   Canada, Vancouver
+119.252.20.56     #h.ns.buddyns.com   Australia, Adelaide
+103.6.87.125      #f.ns.buddyns.com   Asia, India
+173.244.206.25    #b.ns.buddyns.com   USA, Arizona
+#
+64.68.192.210     #dns1.easydns.com
+72.52.2.1         #dns2.easydns.com
+64.68.195.10      #dns3.easydns.com
+#
+# Root DNS servers.
+# dnscache root dns servers for if you use a DNS cache.
+#
+198.41.0.4      
+192.228.79.201  
+192.33.4.12     
+128.8.10.90     
+192.203.230.10  
+192.5.5.241     
+192.112.36.4    
+128.63.2.53     
+192.36.148.17   
+192.58.128.30   
+193.0.14.129    
+199.7.83.42     
+202.12.27.33    
+#
+# beyondsecurity.com scan
+#
+67.207.202.9
+54.235.163.229
+54.215.13.26
+#
+# automatic - jetpack
+# -- not sure how to deal with whitelisting port ranges yet.
+#192.0.80.0/20
+#209.15.20.0/22
+#192.0.64.0/18
+#66.155.0.0/17
+192.0.84.33
+192.0.84.35
+192.0.80.167
+192.0.81.17
+192.0.81.57
+209.15.21.80
+209.15.21.85
+209.15.21.87
+209.15.21.96
+209.15.21.104
+209.15.21.122
+209.15.21.131
+209.15.21.137
+#
+# Apple facetime and im 
+#
+17.173.254.222
+17.173.254.223 
+
+#
+# Add Your own servers and their associated routers.
+#
+
+#
+# Add Your work/home pc ip's here
+#
