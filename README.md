@@ -149,7 +149,3 @@ DROP       all  --  anywhere             anywhere             state NEW
 [ipset-blacklist](https://github.com/trick77/ipset-blacklist/)
 
 [ipsets](http://kirkkosinski.com/2013/11/mass-blocking-evil-ip-addresses-iptables-ip-sets/)
-
-
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/dannysheehan/iptables-ipset-blacklists/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
-
