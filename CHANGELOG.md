@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased (v2.0.0)
+## Unreleased
+
+## v2.0.0 (2026-07-03)
 
 Complete rewrite. The repo was renamed `iptables-ipset-blacklists` →
 `nft-blocklist` (GitHub redirects the old URLs).
