@@ -4,30 +4,68 @@
 # tests prove real-kernel nftables behavior, but only a full OS proves
 # packaging (.deb/.rpm), systemd unit interaction (timer, boot restore),
 # and coexistence with each distro's default firewall stack (UFW,
-# firewalld). Minimal bento boxes keep downloads small-ish and work with
-# both VirtualBox and libvirt providers.
+# firewalld). Minimal boxes keep downloads small-ish.
+#
+# Box choice: Chef Bento publishes VirtualBox/VMware images. Libvirt/KVM
+# (vagrant-libvirt) uses cloud-image boxes — official distro cloud images
+# with libvirt/qemu providers. Set VAGRANT_DEFAULT_PROVIDER=libvirt on
+# Linux hosts without VirtualBox.
 #
 # Usage (from repo root):
 #   make e2e                 # all boxes
 #   make e2e BOX=rocky9      # one box
 # or directly: cd test/e2e && vagrant up ubuntu2404 && ./run.sh ubuntu2404
 
+def e2e_provider
+  return ENV["VAGRANT_DEFAULT_PROVIDER"] if ENV["VAGRANT_DEFAULT_PROVIDER"]
+
+  # Match run.sh: libvirt on Linux when VirtualBox is absent.
+  if RUBY_PLATFORM.include?("linux") && system("command -v VBoxManage >/dev/null 2>&1") == false
+    "libvirt"
+  else
+    "virtualbox"
+  end
+end
+
+# logical name => { provider => vagrantcloud box }
 BOXES = {
-  "ubuntu2404" => "bento/ubuntu-24.04",       # nftables-native + UFW world
-  "debian12"   => "bento/debian-12",
-  "rocky9"     => "bento/rockylinux-9",       # firewalld enterprise world
-  "leap156"    => "bento/opensuse-leap-15.6", # SLES 15 proxy
-  "fedora"     => "bento/fedora-latest",      # kernel/nftables canary
+  "ubuntu2404" => {
+    "virtualbox" => "bento/ubuntu-24.04",
+    "libvirt"    => "cloud-image/ubuntu-24.04",
+  },
+  "debian12" => {
+    "virtualbox" => "bento/debian-12",
+    "libvirt"    => "cloud-image/debian-12",
+  },
+  "rocky9" => {
+    "virtualbox" => "bento/rockylinux-9",
+    "libvirt"    => "cloud-image/rocky-9",
+  },
+  "leap156" => {
+    "virtualbox" => "bento/opensuse-leap-15.6",
+    "libvirt"    => "cloud-image/opensuse-leap-15.6",
+  },
+  "fedora" => {
+    "virtualbox" => "bento/fedora-latest",
+    "libvirt"    => "cloud-image/fedora-42",
+  },
 }
+
+def box_for(providers)
+  providers.fetch(e2e_provider) { providers["virtualbox"] }
+end
 
 Vagrant.configure("2") do |config|
   config.vm.synced_folder "../..", "/repo",
     type: "rsync",
-    rsync__exclude: [".git/", ".vagrant/", "RESEARCH/"]
+    rsync__exclude: [".git/", ".vagrant/", "RESEARCH/"],
+    # cloud-image/openSUSE has no 'vagrant' group (primary gid is 'users').
+    # Tests run as root; ownership fixup after rsync is unnecessary.
+    rsync__chown: false
 
-  BOXES.each do |name, box|
+  BOXES.each do |name, providers|
     config.vm.define name, autostart: false do |m|
-      m.vm.box = box
+      m.vm.box = box_for(providers)
       m.vm.hostname = "nftbl-#{name}"
 
       m.vm.provider "virtualbox" do |vb|

@@ -51,6 +51,7 @@ PKG_VERSION := $(shell echo $(VERSION) | sed 's/^v//; s/-/./g')
 package: build
 	@command -v nfpm >/dev/null 2>&1 || { echo "nfpm required: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest"; exit 1; }
 	mkdir -p dist
+	rm -f dist/nft-blocklist_*.deb dist/nft-blocklist-*.rpm
 	NFPM_VERSION=$(PKG_VERSION) nfpm package -f packaging/nfpm.yaml -p deb -t dist/
 	NFPM_VERSION=$(PKG_VERSION) nfpm package -f packaging/nfpm.yaml -p rpm -t dist/
 

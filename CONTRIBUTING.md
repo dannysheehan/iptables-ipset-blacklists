@@ -9,7 +9,9 @@ script lives frozen in `legacy/` and does not accept changes.
 - Go 1.26+ (`go.mod` is authoritative)
 - `nft` (nftables) for integration tests
 - `golangci-lint` for linting, `nfpm` for packaging, Vagrant + libvirt (or
-  VirtualBox) for the e2e matrix
+  VirtualBox) for the e2e matrix. On Linux with KVM, set
+  `VAGRANT_DEFAULT_PROVIDER=libvirt`; the matrix uses `cloud-image/*` boxes
+  for libvirt and `bento/*` for VirtualBox.
 
 ## Commands
 
