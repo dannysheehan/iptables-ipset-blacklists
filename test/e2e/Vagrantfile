@@ -1,0 +1,47 @@
+# Vagrant e2e matrix for nft-blocklist.
+#
+# Why VMs at all: unit tests prove the logic and the netns integration
+# tests prove real-kernel nftables behavior, but only a full OS proves
+# packaging (.deb/.rpm), systemd unit interaction (timer, boot restore),
+# and coexistence with each distro's default firewall stack (UFW,
+# firewalld). Minimal bento boxes keep downloads small-ish and work with
+# both VirtualBox and libvirt providers.
+#
+# Usage (from repo root):
+#   make e2e                 # all boxes
+#   make e2e BOX=rocky9      # one box
+# or directly: cd test/e2e && vagrant up ubuntu2404 && ./run.sh ubuntu2404
+
+BOXES = {
+  "ubuntu2404" => "bento/ubuntu-24.04",       # nftables-native + UFW world
+  "debian12"   => "bento/debian-12",
+  "rocky9"     => "bento/rockylinux-9",       # firewalld enterprise world
+  "leap156"    => "bento/opensuse-leap-15.6", # SLES 15 proxy
+  "fedora"     => "bento/fedora-latest",      # kernel/nftables canary
+}
+
+Vagrant.configure("2") do |config|
+  config.vm.synced_folder "../..", "/repo",
+    type: "rsync",
+    rsync__exclude: [".git/", ".vagrant/", "RESEARCH/"]
+
+  BOXES.each do |name, box|
+    config.vm.define name, autostart: false do |m|
+      m.vm.box = box
+      m.vm.hostname = "nftbl-#{name}"
+
+      m.vm.provider "virtualbox" do |vb|
+        vb.memory = 1024
+        vb.cpus = 1
+      end
+      m.vm.provider "libvirt" do |lv|
+        lv.memory = 1024
+        lv.cpus = 1
+      end
+
+      # Provision only prepares the OS; the actual test phases are driven
+      # from run.sh so a reboot can happen between them.
+      m.vm.provision "shell", path: "provision.sh"
+    end
+  end
+end
