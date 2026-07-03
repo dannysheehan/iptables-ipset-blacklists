@@ -1,0 +1,12 @@
+# Tor exit nodes — tier 3 / aggressive, disabled by default. Blocking Tor
+# blocks real humans (journalists, privacy-conscious users), not just
+# abusers. Enabling requires the explicit acknowledgement flag.
+name: tor-exit-nodes
+enabled: false
+acknowledge_risk: false
+url: https://check.torproject.org/torbulkexitlist
+format: plain
+family: ipv4
+min_fetch_interval: 23h
+risk: aggressive
+fail_policy: use_cache

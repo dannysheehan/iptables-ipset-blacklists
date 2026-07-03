@@ -1,0 +1,10 @@
+# blocklist.de: IPs reported for attacks on fail2ban users' services in the
+# last 48 hours. High signal for SSH/mail/web brute force; the only feed
+# kept from the original 2014 script (the rest are dead).
+name: blocklist-de
+url: https://lists.blocklist.de/lists/all.txt
+format: plain
+family: ipv4
+min_fetch_interval: 23h
+risk: medium
+fail_policy: use_cache

@@ -1,0 +1,13 @@
+# Backstop failure notifier, triggered via OnFailure= when the update
+# service fails so hard its own notification sinks never ran (crash, OOM
+# kill, timeout). Sends the recent journal of the failed unit (%i) through
+# the operator's script — point it at the same place your
+# notifications.sinks go (see docs/notifications.md).
+[Unit]
+Description=Notify about failed %i
+
+[Service]
+Type=oneshot
+# Ship a trivial default: log loudly to the journal/syslog. Replace the
+# script (or drop-in override ExecStart) with a webhook/signal-cli call.
+ExecStart=/bin/sh -c 'journalctl -u %i -n 20 --no-pager | logger -p daemon.crit -t nft-blocklist-failure'

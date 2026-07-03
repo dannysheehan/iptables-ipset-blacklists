@@ -1,0 +1,42 @@
+# Fetches feeds and atomically applies the blocklist ruleset.
+# Triggered by nft-blocklist.timer; run manually with:
+#   systemctl start nft-blocklist.service
+[Unit]
+Description=Update nftables blocklist from threat feeds
+Documentation=https://github.com/dannysheehan/nft-blocklist
+Wants=network-online.target
+After=network-online.target nftables.service firewalld.service
+# If the update crashes before its own notifications fire, this backstop
+# still tells someone (see nft-blocklist-notify@.service).
+OnFailure=nft-blocklist-notify@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/nft-blocklist update
+TimeoutStartSec=15min
+
+# Resource containment: the kernel cgroup replaces the v1 script's cpulimit
+# hack. 20% of one core keeps budget-VPS providers happy; 200M covers the
+# largest curated feeds with headroom (MemoryMax kills us cleanly instead
+# of letting a hostile feed OOM the host).
+CPUQuota=20%
+MemoryMax=200M
+Nice=10
+IOSchedulingClass=idle
+
+# Hardening: the process needs CAP_NET_ADMIN for nft and write access only
+# to its own state/cache directories.
+CapabilityBoundingSet=CAP_NET_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX
+StateDirectory=nft-blocklist
+CacheDirectory=nft-blocklist
+ConfigurationDirectory=nft-blocklist

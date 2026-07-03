@@ -1,0 +1,33 @@
+# Re-applies the last-known-good ruleset at boot, BEFORE the network comes
+# up: the v1 script kept .sav files for the same reason — a rebooted server
+# must not face the internet unprotected while feeds re-download.
+#   systemctl enable nft-blocklist-restore.service
+[Unit]
+Description=Restore last-known-good nftables blocklist at boot
+Documentation=https://github.com/dannysheehan/nft-blocklist
+DefaultDependencies=no
+Wants=network-pre.target
+Before=network-pre.target shutdown.target
+Conflicts=shutdown.target
+# Ordering after nftables/firewalld base load is unnecessary (we own our
+# table), but after local-fs so /var/lib is mounted.
+After=local-fs.target
+
+[Service]
+Type=oneshot
+# rollback re-applies /var/lib/nft-blocklist/last-good.nft; on a first-ever
+# boot there is nothing to restore and that is fine.
+ExecStart=/usr/sbin/nft-blocklist rollback
+SuccessExitStatus=0 1
+RemainAfterExit=yes
+CapabilityBoundingSet=CAP_NET_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+StateDirectory=nft-blocklist
+ConfigurationDirectory=nft-blocklist
+
+[Install]
+WantedBy=multi-user.target

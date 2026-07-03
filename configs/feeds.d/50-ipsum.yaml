@@ -1,0 +1,12 @@
+# stamparm/ipsum: daily aggregation of ~50 public blocklists where each IP
+# carries a score = number of lists it appears on. min_score 3 keeps only
+# IPs confirmed by 3+ independent sources, which crushes the false-positive
+# rate of any single list.
+name: ipsum
+url: https://raw.githubusercontent.com/stamparm/ipsum/master/ipsum.txt
+format: ipsum
+family: ipv4
+min_score: 3
+min_fetch_interval: 23h
+risk: low
+fail_policy: use_cache

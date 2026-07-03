@@ -1,0 +1,19 @@
+# Schedules daily blocklist updates.
+#   systemctl enable --now nft-blocklist.timer
+[Unit]
+Description=Daily nftables blocklist update
+Documentation=https://github.com/dannysheehan/nft-blocklist
+
+[Timer]
+OnCalendar=daily
+# Jitter matters: without it every install fetches at 00:00 sharp, which
+# collectively DDoSes the feed providers and gets client IPs banned.
+RandomizedDelaySec=1h
+# Catch up if the machine was off at the scheduled time.
+Persistent=true
+# First refresh shortly after boot (the restore service has already
+# re-applied the cached ruleset by then, so there is no unprotected gap).
+OnBootSec=5min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,40 @@
+# nft-blocklist main configuration.
+# Install as /etc/nft-blocklist/config.yaml; feeds live in feeds.d/ beside it.
+# Every key shown here is optional — the values are the built-in defaults.
+
+nftables:
+  table: blocklist    # dedicated table; never fights firewalld/UFW for theirs
+  chain: input
+  priority: -150      # before firewalld/UFW filter chains (0)
+
+policy:
+  # drop is the safe default for malicious sources; reject responds and
+  # thereby confirms your host exists. Only switch for troubleshooting.
+  action: drop
+  # Rate-limited audit logging for your public service ports, so you can
+  # later check whether real customers were caught by a feed
+  # (see /var/log or journalctl for the "[BL DROP] " prefix).
+  log_tcp_ports: [80, 443]
+  log_udp_ports: []
+  log_rate: 5/minute
+  log_prefix: "[BL DROP] "
+
+# Operator-maintained files (optional). allowlist always wins over feeds.
+allowlist_file: /etc/nft-blocklist/allowlist.txt
+local_blocklist_file: /etc/nft-blocklist/blocklist.local
+
+# Refuse an update whose total entry count falls below this percentage of
+# the previous run — a collapsed upstream feed must not silently strip your
+# protection. Override a legitimate shrink with `nft-blocklist update --force`.
+shrink_guard_percent: 50
+
+# state_dir: /var/lib/nft-blocklist     # last-known-good ruleset + metadata
+# cache_dir: /var/cache/nft-blocklist   # downloaded feed bodies
+
+notifications:
+  # Only warning and critical events are delivered by default; set to info
+  # if you also want per-update success summaries.
+  min_level: warning
+  sinks: []
+  # See docs/notifications.md for webhook (Discord/Slack/Telegram) and
+  # command (signal-cli, WhatsApp bridges) examples.

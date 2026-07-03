@@ -1,0 +1,11 @@
+# nft-blocklist allowlist — one IP or CIDR per line, "#" comments.
+# Entries here are NEVER blocked: they are subtracted from every feed and
+# an accept rule for them runs before any drop rule. If an allowlisted IP
+# shows up in a feed you get an allowlist_collision notification instead of
+# an outage.
+#
+# Put here: your monitoring probes, office/home IPs, upstream resolvers,
+# anything whose loss of access would lock you out.
+
+# 203.0.113.10        # office
+# 198.51.100.0/28     # monitoring provider

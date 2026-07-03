@@ -1,0 +1,23 @@
+# abuse.ch malware C2 feeds — tier 2, disabled by default because they are
+# most valuable for OUTBOUND blocking (catching infected internal hosts
+# calling home), and this tool currently filters inbound. Enable if inbound
+# C2 contact is a concern for you. Both feeds are legitimately near-empty
+# at quiet times; the shrink guard and empty-feed handling cope with that.
+feeds:
+  - name: feodo-c2
+    enabled: false
+    url: https://feodotracker.abuse.ch/downloads/ipblocklist.txt
+    format: plain
+    family: ipv4
+    min_fetch_interval: 1h
+    risk: medium
+    fail_policy: use_cache
+
+  - name: sslbl-c2
+    enabled: false
+    url: https://sslbl.abuse.ch/blacklist/sslipblacklist.txt
+    format: plain
+    family: ipv4
+    min_fetch_interval: 1h
+    risk: medium
+    fail_policy: use_cache

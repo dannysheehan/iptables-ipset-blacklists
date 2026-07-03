@@ -1,0 +1,55 @@
+# nfpm packaging manifest — one source of truth for .deb and .rpm.
+# Build: make package  (nfpm reads NFPM_VERSION or falls back to "dev")
+name: nft-blocklist
+arch: amd64
+platform: linux
+version: ${NFPM_VERSION}
+section: net
+priority: optional
+maintainer: Danny Sheehan <coder@dannysheehan.com>
+description: |
+  Atomic nftables IP blocklist manager.
+  Fetches curated threat-intelligence feeds, validates and merges them, and
+  atomically applies native nftables sets. Successor to the iptables/ipset
+  blacklists script.
+vendor: Danny Sheehan
+homepage: https://github.com/dannysheehan/nft-blocklist
+license: MIT
+
+depends:
+  - nftables
+
+contents:
+  - src: bin/nft-blocklist
+    dst: /usr/sbin/nft-blocklist
+    file_info:
+      mode: 0755
+
+  # Config: never overwrite an operator's edits on upgrade.
+  - src: configs/config.yaml.example
+    dst: /etc/nft-blocklist/config.yaml
+    type: config|noreplace
+  - src: configs/allowlist.example
+    dst: /etc/nft-blocklist/allowlist.txt
+    type: config|noreplace
+  - src: configs/feeds.d/
+    dst: /etc/nft-blocklist/feeds.d/
+    type: config|noreplace
+
+  - src: systemd/nft-blocklist.service
+    dst: /usr/lib/systemd/system/nft-blocklist.service
+  - src: systemd/nft-blocklist.timer
+    dst: /usr/lib/systemd/system/nft-blocklist.timer
+  - src: systemd/nft-blocklist-restore.service
+    dst: /usr/lib/systemd/system/nft-blocklist-restore.service
+  - src: systemd/nft-blocklist-notify@.service
+    dst: /usr/lib/systemd/system/nft-blocklist-notify@.service
+
+  - src: fail2ban/action.d/nftables-blocklist.conf
+    dst: /usr/share/doc/nft-blocklist/fail2ban/action.d/nftables-blocklist.conf
+  - src: docs/
+    dst: /usr/share/doc/nft-blocklist/
+
+scripts:
+  postinstall: packaging/postinstall.sh
+  preremove: packaging/preremove.sh

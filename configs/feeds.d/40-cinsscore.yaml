@@ -1,0 +1,10 @@
+# CINS Army (Sentinel): IPs with poor reputation seen attacking CINS
+# sensors and not on other major lists — complements rather than duplicates
+# Spamhaus/FireHOL.
+name: cins-badguys
+url: https://cinsscore.com/list/ci-badguys.txt
+format: plain
+family: ipv4
+min_fetch_interval: 23h
+risk: medium
+fail_policy: use_cache

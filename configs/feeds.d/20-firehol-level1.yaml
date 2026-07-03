@@ -1,0 +1,11 @@
+# FireHOL level1: composite of feeds curated to be safe for blanket
+# blocking. It intentionally includes private/reserved ranges (it is meant
+# as an edge filter); nft-blocklist's safety policy strips those, keeping
+# only routable threat space.
+name: firehol-level1
+url: https://iplists.firehol.org/files/firehol_level1.netset
+format: cidr
+family: ipv4
+min_fetch_interval: 23h
+risk: low
+fail_policy: use_cache

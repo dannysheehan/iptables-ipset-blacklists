@@ -1,0 +1,19 @@
+# Spamhaus DROP: hijacked and criminal-controlled netblocks. The canonical
+# "safe to drop all traffic" list — tier 1, enabled by default.
+# Spamhaus asks for at most hourly fetches; daily is plenty (their FAQ).
+feeds:
+  - name: spamhaus-drop
+    url: https://www.spamhaus.org/drop/drop.txt
+    format: cidr
+    family: ipv4
+    min_fetch_interval: 23h
+    risk: low
+    fail_policy: use_cache
+
+  - name: spamhaus-drop-v6
+    url: https://www.spamhaus.org/drop/dropv6.txt
+    format: cidr
+    family: ipv6
+    min_fetch_interval: 23h
+    risk: low
+    fail_policy: use_cache
