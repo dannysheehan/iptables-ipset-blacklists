@@ -1,151 +1,98 @@
-iptables-ipset-blacklists
-=========================
+# nft-blocklist
 
-There are lots of tools and services that do a good job of identifying abusers, spammers and
-hackers. They provide lists of bad IPs in blacklists. By blocking these bad IPs from
-accessing your websites and servers you can go a long way to protecting them and also
-preventing a lot of useless traffic being logged in your logs. It also helps prevent
-a lot of noise so that your snort, ossec, logwatcher, mod-security, psad etc. tools can
-do some real work of finding legitimate and directed attacks to your servers.
+Atomic **nftables IP blocklist manager** for Linux servers. Fetches curated
+threat-intelligence feeds, validates and merges them, and applies the
+result as native nftables sets — in one kernel transaction, so your
+firewall is never half-updated and never unprotected during a refresh.
 
-NOTE: Some hosting companies will shutdown your VPS server if you use more than .9 load.
-So we recommending using **cpulimit** to invoke blacklists.sh
+This is the v2 rewrite of `iptables-ipset-blacklists` (2014). The legacy
+iptables/ipset Bash script lives frozen in [legacy/](legacy/);
+[docs/migration-from-v1.md](docs/migration-from-v1.md) shows how to switch.
 
-`cpulimit -l 20 /usr/local/bin/blacklists.sh`
+> **Scope honestly stated:** IP blocklists are a noise-reduction control,
+> not a security boundary. They cut log spam, scanner traffic and known-bad
+> actors so your IDS/monitoring can see real attacks — they do not replace
+> patching, MFA, SSH hardening, or a WAF.
 
-## Requires
+## How it works
 
- - iptables
- - ipset
+```mermaid
+flowchart LR
+    F[curated feeds\nSpamhaus DROP, FireHOL L1,\nblocklist.de, CINS, ipsum...] -->|ETag-cached HTTP| P[parse + validate\nreject bogons & poison]
+    L[your allowlist\n+ local blocklist] --> M
+    P --> M[dedupe + CIDR merge\nallowlist subtracted]
+    M --> G{shrink guard}
+    G -->|ok| N["one atomic nft -f transaction\ntable inet blocklist"]
+    G -->|feed collapsed| K[refuse + alert\nold rules stay active]
+    N --> S[(last-known-good\nrestored at boot)]
+```
 
-## Installation
+Key properties, each enforced by tests:
 
-- setup your personal whitelist and blacklist (optional)
-    -  /var/lib/blacklists/{whitelist.txt,blacklist.txt}
-- run _sudo blacklists.sh_  
-- setup your _/etc/crontab_
+- **Atomic**: the generated ruleset applies entirely or not at all
+  (`nft -f` transaction). No exposure window during updates.
+- **Fail closed**: any fetch/parse/apply failure leaves the previous rules
+  active; a **shrink guard** refuses updates that would silently drop most
+  of your protection when an upstream feed dies.
+- **Allowlist wins, always**: allowlisted IPs are subtracted from every
+  feed *and* accepted by an early rule; if one shows up in a feed you get
+  an `allowlist_collision` alert instead of an outage.
+- **Feed hygiene**: bogons, private ranges, default routes and absurdly
+  broad prefixes are rejected; scored feeds (ipsum) filter by confidence;
+  HTML error pages don't pass as empty lists.
+- **Plays well with others**: its own `table inet blocklist` at priority
+  -150 coexists with firewalld and UFW (never edits their tables), and a
+  separate `dynamic` set integrates [fail2ban](fail2ban/) bans that feed
+  updates can never clobber.
+- **Kind to providers**: per-feed minimum fetch intervals, conditional
+  requests (ETag/Last-Modified), and timer jitter.
+- **Observable**: journald logs, `status` against the live kernel, and
+  pluggable notifications (webhook → Discord/Slack/Telegram today,
+  command → signal-cli/anything; see
+  [docs/notifications.md](docs/notifications.md)).
 
-    ~~~
-    @reboot         root    /usr/local/bin/blacklists.sh
-    @daily          root    /usr/local/bin/blacklists.sh
-    ~~~
+## Quick start
 
-- NOTE: If your hosting provider is Ramnode your terms of service prevent you from using all
-your available CPU load.  So use cpulimit to restrict the CPU usage to 20%.
-    ~~~
-    @reboot         root    cpulimit -z -l 20 /usr/local/bin/blacklists.sh
-    @daily          root    cpulimit -z -l 20 /usr/local/bin/blacklists.sh
-    ~~~
+```sh
+# install the package (Releases page), then:
+sudo vi /etc/nft-blocklist/allowlist.txt     # 1. add YOUR management IPs first
+sudo nft-blocklist update --dry-run | less   # 2. review the exact ruleset
+sudo nft-blocklist update                    # 3. apply
+sudo systemctl enable --now nft-blocklist.timer          # daily + jitter
+sudo systemctl enable nft-blocklist-restore.service      # protection at boot
+nft-blocklist status
+```
 
-- setup logging
+Distro guides: [Ubuntu/Debian](docs/debian-ubuntu.md) ·
+[RHEL/Rocky/Alma/Fedora](docs/rhel-family.md) · [SLES/openSUSE](docs/suse.md)
 
-_/etc/logrotate.d/blacklist_
-~~~
-/var/log/blacklists.log
-{
-    rotate 4
-    weekly
-    missingok
-    notifempty
-    compress
-    delaycompress
-    sharedscripts
-    postrotate
-        invoke-rc.d rsyslog reload >/dev/null 2>&1 || true
-    endscript
-}
-~~~
+## Commands
 
-_/etc/rsyslog.d/30-blacklist.conf_
-~~~
-# Log kernel generated UFW log messages to file
-:msg,contains,"[BL " /var/log/blacklists.log
-& ~
-~~~
+| Command                        | Purpose                                       |
+|--------------------------------|-----------------------------------------------|
+| `update` `--dry-run` `--force` | fetch, merge, atomically apply                |
+| `validate`                     | check config + feeds.d without touching state |
+| `status`                       | last run summary + live kernel set counts     |
+| `rollback`                     | re-apply the last-known-good ruleset          |
 
-## Features
+## Configuration
 
-- loads known authoritative blacklists and allows you to add/configure others easily
-- allows you to create your own blacklist of IPs and net ranges.
-- allows you to create a whitelist and notifies you if one of your whitelisted IPs
-is in a blacklist. Don't block legitimate traffic.
-- supports network range blacklists as well as ip based blacklists.
-- automatically adds dedicated/separate iptables chain for blacklisting (tested on Ubuntu/Centos ).
-It sets up the firewall rules for you.
-- logs access to customer facing ports such as http/https/domain with rate limiting so you can
-go back to check your logs in case you are blocking real users/customers. All other
-ports are blocked without logging.
-- keeps cache of downloaded blacklists, so it only downloads a blacklist once in 24 hour period.
-This prevents blacklist providers banning your IP for downloading too often.
-- uses a temporary ipset when loading updated blacklists to ensure you are always protected
-during blacklist updates.
-- after a reboot cached ipsets are loaded to ensure you are protected faster after an outage and not left exposed until the blacklists are re-imported.
+`/etc/nft-blocklist/config.yaml` plus one YAML per feed in `feeds.d/`
+(strictly validated — typos are errors, not surprises). Shipped defaults:
+Spamhaus DROP (v4+v6), FireHOL level1, blocklist.de, CINS Army, and ipsum
+with a ≥3-lists confidence threshold; abuse.ch C2 feeds and Tor exit nodes
+are included but disabled (aggressive feeds require an explicit
+`acknowledge_risk: true`). See [configs/](configs/) — every option is
+documented in place.
 
-## Example syslog messages
+## Development
 
-- everything is logged to syslog, for your monitoring to pick up issues.
+Go 1.26+, table-driven unit tests, golden-file ruleset tests, real-kernel
+integration tests in unprivileged network namespaces (`make integration` —
+no sudo needed), and a five-distro Vagrant e2e matrix (`make e2e`).
+Architecture and design rationale: [docs/architecture.md](docs/architecture.md).
+Contributing and task-brief conventions: [CONTRIBUTING.md](CONTRIBUTING.md).
 
-~~~
-Jan 14 14:51:32 serverx [/usr/local/bin/blacklists.sh]: ftmon.org blacklist script started
-Jan 14 14:52:17 serverx [/usr/local/bin/blacklists.sh]: ERROR Your whitelist IP 54.235.163.229 has been blacklisted in lists-blocklist-de-all
-Jan 14 14:57:47 serverx [/usr/local/bin/blacklists.sh]: ERROR Your whitelist IP 67.207.202.9 has been blacklisted in infiltrated.net
-Jan 14 15:02:03 serverx [/usr/local/bin/blacklists.sh]: bad_ips: current=53435   previous=53435   bad_nets: previous=1535   current=1535
-Jan 14 15:02:03 serverx [/usr/local/bin/blacklists.sh]: ftmon.org blacklist script completed
-~~~
+## License
 
-### Example email message
-
-- optional feature to be emailed if there are issues.
-
-~~~
-From: root
-Date: Wed, Jan 1, 2015 at 3:09 PM
-Subject: [/usr/local/bin/blacklists.sh] sever.org
-To: root
-
-
-bad_ips: current=29294   previous=57196   bad_nets: previous=1536   current=1536
-
-ERROR Your whitelist IP 192.0.81.17 has been blacklisted in lists-blocklist-de-all
-ERROR Your whitelist IP 192.0.81.57 has been blacklisted in lists-blocklist-de-all
-ERROR Your whitelist IP 67.207.202.9 has been blacklisted in infiltrated.net
-~~~
-
-
-### Firewall audit log of production ports
-
-- only ports such as DNS,HTTP,HTTPS are logged, so you can
-go back and do auditing in case legitimate traffic is being blocked.
-
-_/var/log/blacklists.log_
-~~~
-Jan 1 19:24:42 server kernel: [541334.229673] [BL DROP] IN=eth0 OUT= MAC=d4:be:d9:a1:62:06:78:da:6e:25:cc:00:08:00 SRC=124.232.142.220 DST=x.x.x.x LEN=58 TOS=0x00 PREC=0x00 TTL=234 ID=54321 PROTO=UDP SPT=47479 DPT=53 LEN=38
-~~~
-
-### Firewall rules created
-
-- this is the iptables chain that is automatically created based on `TCP_PORTS="53,80,443"`
-and `UDP_PORTS="53"`
-- production ports are rejected not droped so as not to "stir up" hackers.
-- there is also rate limiting on production port logging.
-
-
-~~~
-iptables -L ftmon-blacklists
-Chain ftmon-blacklists (2 references)
-target     prot opt source               destination
-LOG        tcp  --  anywhere             anywhere             multiport dports http,https limit: avg 5/min burst 5 LOG level warning prefix "[BL DROP] "
-LOG        udp  --  anywhere             anywhere             multiport dports domain limit: avg 5/min burst 5 LOG level warning prefix "[BL DROP] "
-REJECT     tcp  --  anywhere             anywhere             state NEW multiport dports http,https reject-with icmp-port-unreachable
-REJECT     udp  --  anywhere             anywhere             state NEW multiport dports domain reject-with icmp-port-unreachable
-DROP       all  --  anywhere             anywhere             state NEW
-
-~~~
-
-## References and Other blacklist scripts
-
-[blacklist script](http://sysadminnotebook.blogspot.com.au/2013_07_01_archive.html)
-
-[ipset-blacklist](https://github.com/trick77/ipset-blacklist/)
-
-[ipsets](http://kirkkosinski.com/2013/11/mass-blocking-evil-ip-addresses-iptables-ip-sets/)
+MIT — see [LICENSE](LICENSE).
