@@ -1,0 +1,11 @@
+bin/
+dist/
+coverage.out
+*.test
+test/e2e/.vagrant/
+
+# local research notes, not part of the project
+RESEARCH/
+
+# local AI-assistant session settings
+.claude/

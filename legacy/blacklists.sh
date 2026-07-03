@@ -1,5 +1,11 @@
 #!/bin/bash
 #---------------------------------------------------------------------------
+# DEPRECATED: This script is the frozen v1 implementation and is no longer
+# maintained. It relies on iptables/ipset, which are deprecated on modern
+# distributions (RHEL 9+, Ubuntu 22.04+, SLES 15+), and most of its feed
+# URLs are dead. Use the nft-blocklist tool in this repository instead.
+# See docs/migration-from-v1.md for migration instructions.
+#---------------------------------------------------------------------------
 # @(#)$Id$
 #title          :blacklists.sh
 #description    :Uses iptables ipset to block ip's in known blacklists.
