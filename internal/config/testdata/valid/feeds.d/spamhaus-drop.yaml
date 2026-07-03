@@ -1,0 +1,7 @@
+name: spamhaus-drop
+url: https://www.spamhaus.org/drop/drop.txt
+format: cidr
+family: ipv4
+min_fetch_interval: 24h
+risk: low
+fail_policy: use_cache

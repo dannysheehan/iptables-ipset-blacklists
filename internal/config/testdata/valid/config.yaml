@@ -1,0 +1,21 @@
+nftables:
+  table: blocklist
+  chain: input
+  priority: -150
+
+policy:
+  action: drop
+  log_tcp_ports: [53, 80, 443]
+  log_udp_ports: [53]
+  log_rate: 5/minute
+
+allowlist_file: /etc/nft-blocklist/allowlist.txt
+local_blocklist_file: /etc/nft-blocklist/blocklist.local
+
+shrink_guard_percent: 60
+
+feeds:
+  - name: inline-feed
+    url: https://example.com/list.txt
+    format: plain
+    risk: low

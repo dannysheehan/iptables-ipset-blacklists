@@ -1,0 +1,11 @@
+feeds:
+  - name: ipsum
+    url: https://raw.githubusercontent.com/stamparm/ipsum/master/ipsum.txt
+    format: ipsum
+    min_score: 3
+    risk: low
+  - name: tor-exit-nodes
+    enabled: false
+    url: https://check.torproject.org/torbulkexitlist
+    format: plain
+    risk: aggressive

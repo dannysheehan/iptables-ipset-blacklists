@@ -1,0 +1,8 @@
+# a poisoned feed that tries to make us block RFC1918, loopback, defaults
+0.0.0.0/0
+10.0.0.0/8
+127.0.0.1
+169.254.1.1
+192.168.1.0/24
+224.0.0.1
+1.2.3.4
