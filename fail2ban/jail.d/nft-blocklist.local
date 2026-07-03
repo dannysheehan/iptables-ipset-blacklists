@@ -1,0 +1,25 @@
+# Example jails wired to nft-blocklist's dynamic sets.
+# Install: cp nft-blocklist.local /etc/fail2ban/jail.d/  (review first!)
+#
+# Division of labor: feeds (static sets) pre-block *known* bad actors;
+# fail2ban (dynamic sets) reacts to *this host's* logs in real time. Same
+# nftables table, same drop rules, zero interference.
+
+[DEFAULT]
+banaction = nftables-blocklist
+# Ban timeout is enforced twice: fail2ban unbans on schedule AND the nft
+# element carries its own timeout as a belt-and-braces expiry if fail2ban
+# dies while bans are active.
+
+[sshd]
+enabled = true
+maxretry = 5
+findtime = 10m
+bantime = 1d
+
+# Repeat offenders across any jail get week-long bans.
+[recidive]
+enabled = true
+bantime = 1w
+findtime = 1d
+maxretry = 3
