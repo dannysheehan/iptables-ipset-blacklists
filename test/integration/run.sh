@@ -3,10 +3,11 @@
 #
 # Why namespaces: `nft` needs CAP_NET_ADMIN, but these tests must run on
 # developer laptops and CI without sudo and without touching the host
-# firewall. `unshare -r -n` provides root + a private network namespace, so
-# every nft command here operates on a throwaway kernel table and the feed
-# server binds only to the namespace's loopback. Requires kernel user
-# namespaces (default-on for all distros in our support matrix).
+# firewall. By default `unshare -r -n` provides root + a private network
+# namespace, so every nft command here operates on a throwaway kernel table and
+# the feed server binds only to the namespace's loopback. CI can set
+# NFTBL_NETNS_MODE=sudo when user namespaces are blocked: `sudo unshare -n`
+# still keeps nftables isolated from the host network namespace.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -18,7 +19,19 @@ if [ -z "${NFTBL_IN_NS:-}" ]; then
   [ -x "$BIN" ] || { echo "build first: make build" >&2; exit 1; }
   go build -o "$FEEDSRV" "$REPO/test/e2e/feedserver" 2>/dev/null \
     || [ -x "$FEEDSRV" ] || { echo "cannot build feedserver (need go or prebuilt bin/feedserver)" >&2; exit 1; }
-  exec unshare -r -n env NFTBL_IN_NS=1 "$0" "$@"
+  case "${NFTBL_NETNS_MODE:-user}" in
+    user)
+      exec unshare -r -n env NFTBL_IN_NS=1 "$0" "$@"
+      ;;
+    sudo)
+      command -v sudo >/dev/null 2>&1 || { echo "sudo netns mode requested, but sudo is unavailable" >&2; exit 1; }
+      exec sudo -n unshare -n env NFTBL_IN_NS=1 "$0" "$@"
+      ;;
+    *)
+      echo "unknown NFTBL_NETNS_MODE=${NFTBL_NETNS_MODE}; use user or sudo" >&2
+      exit 1
+      ;;
+  esac
 fi
 
 ip link set lo up
